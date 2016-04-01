@@ -3,18 +3,18 @@ require 'byebug'
 
 @player_stats = {
   player_1: {
-    name: "player1",
+    name: "player_1",
     score: 0,
     lives: 3
   },
   player_2: {
-    name: "player2",
+    name: "player_2",
     score: 0,
     lives: 3
   }
 }
 
-@current_player = :player_1
+@current_player = nil
 
 def play_round(player)
   num1 = rand(1..20)
@@ -64,16 +64,23 @@ end
 
 
 def play_game()
-  wants_to_play = prompt("Would you like to play a game? (y/n)").downcase
+  if @current_player == nil
+    @current_player = :player_1
+    wants_to_play = prompt("Would you like to play a game? (y/n)").downcase
+    get_player_names()
+  else
+    @current_player = :player_1
+    wants_to_play = prompt("Would you like to play another game? (y/n)").downcase
+    @player_stats.each{|player, data| data[:lives] = 3}
+  end
   case wants_to_play
   when "y"
-    get_player_names()
     while lost_game.nil? do
       round_result = play_round(@player_stats[@current_player])
       assign_score(@player_stats[@current_player], round_result)
-      losing_player = lost_game().nil?
+      get_next_turn
     end
-    puts "Sorry #{@player_stats[@current_player][:name]}, you lost. "
+    puts "Sorry #{lost_game[:name]}, you lost. "
     @player_stats.each do |player, player_data|
       puts "#{player_data[:name]} finished with #{player_data[:score].to_s} points."
     end
