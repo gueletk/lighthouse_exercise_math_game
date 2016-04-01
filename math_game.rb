@@ -1,6 +1,7 @@
 require 'pry'
 require 'byebug'
 require_relative 'player'
+require 'colorize'
 
 # @player_stats = {
 #   player_1: {
@@ -15,32 +16,36 @@ require_relative 'player'
 #   }
 # }
 @players = []
+OUTPUT_COLORS = String.colors
 
 def play_round(player)
   num1 = rand(1..20)
   num2 = rand(1..20)
   operator = ["+","-","/","*"].sample
   answer = eval("#{num1}#{operator}#{num2}").round(2)
-  player_answer = prompt("#{player.name}: What is #{num1} #{operator} #{num2}? it's #{answer}").to_f
+  #byebug
+  player_answer = prompt("#{player.name}: What is #{num1}" +
+   "#{operator} #{num2}? it's #{answer}", OUTPUT_COLORS[active_player]).to_f
   player_answer == answer #returns true if correct, false if wrong
 end
 
 def update_stats(player, round_result)
+  #byebug
   if round_result
     player.score += 1
   else
-    player.score -= 1
+    player.lives -= 1
   end
 end
 
-def prompt(string)
-  puts string
+def prompt(string, color = :white)
+  puts string.colorize(color)
   gets.chomp
 end
 
 def lost_game()
-  @players.each do |player|
-    return player if !player.alive?
+  losing_player = @players.find do |player|
+    !player.alive?
   end
 end
 
@@ -48,12 +53,12 @@ def set_active_player(new_active_index)
   @players.each do |player|
     player.is_active = false
   end
-  @players[new_active_index].is_active = false
+  @players[new_active_index].is_active = true
 end
 
 def get_player_names(num_players)
   num_players.times do |num|
-    name = prompt("Player #{num}, what's your name?")
+    name = prompt("Player #{num + 1}, what's your name?")
     @players << Player.new(name)
   end
 end
@@ -63,37 +68,50 @@ def active_player()
 end
 
 def get_next_player()
-  case active_player
-  when < @players.length - 2
+
+  if active_player < @players.length - 1
     set_active_player(active_player + 1)
   else
     set_active_player(0)
   end
 end
 
+def new_game()
 
+  #if integet or float, will convert to integer. if non-number string, will
+  #convert to 0
+  number_players = prompt("Thanks for choosing to play this guessing game! " +
+    "How many players will be playing?").to_i
+  if number_players > 1
+    get_player_names(number_players)
+    return true
+  else
+    puts "Let's try this again when you bring a friend."
+    return false
+  end
+end
 
 def play_game()
-  if active_player == nil
+  if @players.empty?
+    return if !new_game() #exits if new_game is not sucessful
     @players[0].is_active = true
-    wants_to_play = prompt("Would you like to play a game? (y/n)").downcase
-    get_player_names(2)
+    wants_to_play = "y"
   else
-    @current_player = :player_1
+    set_active_player(0)
     wants_to_play = prompt("Would you like to play another game? (y/n)").downcase
-    @player_stats.each{|player, data| data[:lives] = 3}
+    @players.each{|player| player.lives = 3} #resets the lives to 3
   end
 
   case wants_to_play
   when "y"
     while lost_game.nil? do
-      round_result = play_round(@player_stats[@current_player])
-      update_stats(@player_stats[@current_player], round_result)
-      get_next_turn
+      round_result = play_round(@players[active_player])
+      update_stats(@players[active_player], round_result)
+      get_next_player
     end
-    puts "Sorry #{lost_game[:name]}, you lost. "
-    @player_stats.each do |player, player_data|
-      puts "#{player_data[:name]} finished with #{player_data[:score].to_s} points."
+    puts "Sorry #{lost_game.name}, you lost. "
+    @players.each do |player|
+      puts "#{player.name} finished with #{player.score.to_s} points."
     end
     play_game
   when "n"
@@ -101,5 +119,6 @@ def play_game()
   end
 end
 
+#pp String.colors
 #pp play_round(@player_stats[:player_2])
 pp play_game()
