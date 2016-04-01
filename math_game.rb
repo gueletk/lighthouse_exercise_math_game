@@ -1,4 +1,5 @@
 require 'pry'
+require 'byebug'
 
 @player_stats = {
   player_1: {
@@ -24,9 +25,27 @@ def play_round(player)
   player_answer == answer #returns true if correct, false if wrong
 end
 
+def assign_score(player, round_result)
+  if round_result
+    player[:score] += 1
+  else
+    player[:lives] -= 1
+  end
+end
+
 def prompt(string)
   puts string
   gets.chomp
+end
+
+def lost_game()
+  if @player_stats[:player_1][:lives] == 0
+    return @player_stats[:player_1]
+  elsif @player_stats[:player_2][:lives] == 0
+    return @player_stats[:player_1]
+  else
+    return nil
+  end
 end
 
 def get_player_names()
@@ -42,19 +61,23 @@ def get_next_turn()
   end
 end
 
-def lost_game?()
-  if @player_stats[:player_1][:score] == 0
-    return @player_stats[:player_1]
-  elsif @player_stats[:player_2][:score] == 0
-    return @player_stats[:player_1]
-end
+
 
 def play_game()
   wants_to_play = prompt("Would you like to play a game? (y/n)").downcase
   case wants_to_play
   when "y"
     get_player_names()
-    play_r
+    while lost_game.nil? do
+      round_result = play_round(@player_stats[@current_player])
+      assign_score(@player_stats[@current_player], round_result)
+      losing_player = lost_game().nil?
+    end
+    puts "Sorry #{@player_stats[@current_player][:name]}, you lost. "
+    @player_stats.each do |player, player_data|
+      puts "#{player_data[:name]} finished with #{player_data[:score].to_s} points."
+    end
+    play_game
   when "n"
     return
   end
