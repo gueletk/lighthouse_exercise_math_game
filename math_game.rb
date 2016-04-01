@@ -1,35 +1,35 @@
 require 'pry'
 require 'byebug'
+require_relative 'player'
 
-@player_stats = {
-  player_1: {
-    name: "player_1",
-    score: 0,
-    lives: 3
-  },
-  player_2: {
-    name: "player_2",
-    score: 0,
-    lives: 3
-  }
-}
-
-@current_player = nil
+# @player_stats = {
+#   player_1: {
+#     name: "player_1",
+#     score: 0,
+#     lives: 3
+#   },
+#   player_2: {
+#     name: "player_2",
+#     score: 0,
+#     lives: 3
+#   }
+# }
+@players = []
 
 def play_round(player)
   num1 = rand(1..20)
   num2 = rand(1..20)
   operator = ["+","-","/","*"].sample
   answer = eval("#{num1}#{operator}#{num2}").round(2)
-  player_answer = prompt("#{player[:name]}: What is #{num1} #{operator} #{num2}? it's #{answer}").to_f
+  player_answer = prompt("#{player.name}: What is #{num1} #{operator} #{num2}? it's #{answer}").to_f
   player_answer == answer #returns true if correct, false if wrong
 end
 
-def assign_score(player, round_result)
+def update_stats(player, round_result)
   if round_result
-    player[:score] += 1
+    player.score += 1
   else
-    player[:lives] -= 1
+    player.score -= 1
   end
 end
 
@@ -39,35 +39,45 @@ def prompt(string)
 end
 
 def lost_game()
-  if @player_stats[:player_1][:lives] == 0
-    return @player_stats[:player_1]
-  elsif @player_stats[:player_2][:lives] == 0
-    return @player_stats[:player_1]
-  else
-    return nil
+  @players.each do |player|
+    return player if !player.alive?
   end
 end
 
-def get_player_names()
-  @player_stats[:player_1][:name] = prompt("Player 1, what's your name?")
-  @player_stats[:player_2][:name] = prompt("Player 2, what's your name?")
+def set_active_player(new_active_index)
+  @players.each do |player|
+    player.is_active = false
+  end
+  @players[new_active_index].is_active = false
 end
 
-def get_next_turn()
-  if @current_player == :player_1
-    @current_player = :player_2
+def get_player_names(num_players)
+  num_players.times do |num|
+    name = prompt("Player #{num}, what's your name?")
+    @players << Player.new(name)
+  end
+end
+
+def active_player()
+  @players.find_index{|i| i.is_active}
+end
+
+def get_next_player()
+  case active_player
+  when < @players.length - 2
+    set_active_player(active_player + 1)
   else
-    @current_player = :player_1
+    set_active_player(0)
   end
 end
 
 
 
 def play_game()
-  if @current_player == nil
-    @current_player = :player_1
+  if active_player == nil
+    @players[0].is_active = true
     wants_to_play = prompt("Would you like to play a game? (y/n)").downcase
-    get_player_names()
+    get_player_names(2)
   else
     @current_player = :player_1
     wants_to_play = prompt("Would you like to play another game? (y/n)").downcase
@@ -78,7 +88,7 @@ def play_game()
   when "y"
     while lost_game.nil? do
       round_result = play_round(@player_stats[@current_player])
-      assign_score(@player_stats[@current_player], round_result)
+      update_stats(@player_stats[@current_player], round_result)
       get_next_turn
     end
     puts "Sorry #{lost_game[:name]}, you lost. "
