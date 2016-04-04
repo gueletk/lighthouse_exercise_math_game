@@ -1,124 +1,118 @@
-require 'pry'
-require 'byebug'
-require_relative 'player'
-require 'colorize'
+class MathGame
 
-# @player_stats = {
-#   player_1: {
-#     name: "player_1",
-#     score: 0,
-#     lives: 3
-#   },
-#   player_2: {
-#     name: "player_2",
-#     score: 0,
-#     lives: 3
-#   }
-# }
-@players = []
-OUTPUT_COLORS = String.colors
+  attr_reader :players
+  attr_accessor :game_mode
 
-def play_round(player)
-  num1 = rand(1..20)
-  num2 = rand(1..20)
-  operator = ["+","-","/","*"].sample
-  answer = eval("#{num1}#{operator}#{num2}").round(2)
-  #byebug
-  player_answer = prompt("#{player.name}: What is #{num1}" +
-   "#{operator} #{num2}? it's #{answer}", OUTPUT_COLORS[active_player]).to_f
-  player_answer == answer #returns true if correct, false if wrong
-end
+  WIN_COLOR = :green
+  LOSE_COLOR = :red
 
-def update_stats(player, round_result)
-  #byebug
-  if round_result
-    player.score += 1
-  else
-    player.lives -= 1
-  end
-end
-
-def prompt(string, color = :white)
-  puts string.colorize(color)
-  gets.chomp
-end
-
-def lost_game()
-  losing_player = @players.find do |player|
-    !player.alive?
-  end
-end
-
-def set_active_player(new_active_index)
-  @players.each do |player|
-    player.is_active = false
-  end
-  @players[new_active_index].is_active = true
-end
-
-def get_player_names(num_players)
-  num_players.times do |num|
-    name = prompt("Player #{num + 1}, what's your name?")
-    @players << Player.new(name)
-  end
-end
-
-def active_player()
-  @players.find_index{|i| i.is_active}
-end
-
-def get_next_player()
-
-  if active_player < @players.length - 1
-    set_active_player(active_player + 1)
-  else
-    set_active_player(0)
-  end
-end
-
-def new_game()
-
-  #if integet or float, will convert to integer. if non-number string, will
-  #convert to 0
-  number_players = prompt("Thanks for choosing to play this guessing game! " +
-    "How many players will be playing?").to_i
-  if number_players > 1
-    get_player_names(number_players)
-    return true
-  else
-    puts "Let's try this again when you bring a friend."
-    return false
-  end
-end
-
-def play_game()
-  if @players.empty?
-    return if !new_game() #exits if new_game is not sucessful
-    @players[0].is_active = true
-    wants_to_play = "y"
-  else
-    set_active_player(0)
-    wants_to_play = prompt("Would you like to play another game? (y/n)").downcase
-    @players.each{|player| player.lives = 3} #resets the lives to 3
+  def initialize (game_mode, num_players = 2)
+    @players = []
+    @game_mode = game_mode
+    generate_named_players(@players, num_players)
+    reset_stats
   end
 
-  case wants_to_play
-  when "y"
-    while lost_game.nil? do
-      round_result = play_round(@players[active_player])
-      update_stats(@players[active_player], round_result)
+  def play_game
+    begin
+      round_result = play_round(players[active_player_index])
+      update_stats(players[active_player_index], round_result)
+
+      if round_result
+        puts "Congratulations, that was correct. Your new scores are:".colorize(WIN_COLOR)
+        display_scores
+      else
+        puts "Sorry, that was wrong. Your new scores are:".colorize(LOSE_COLOR)
+        display_scores(players[active_player_index])
+      end
       get_next_player
-    end
-    puts "Sorry #{lost_game.name}, you lost. "
-    @players.each do |player|
-      puts "#{player.name} finished with #{player.score.to_s} points."
-    end
-    play_game
-  when "n"
-    return
+    end until losing_player
+    puts "Sorry #{losing_player.name}, you lost.".colorize(LOSE_COLOR)
+    display_scores(losing_player)
   end
-end
 
-#pp String.colors
-#pp play_round(@player_stats[:player_2])
-pp play_game()
+  def reset_stats()
+    set_active_player(0)
+    players.each{|player| player.lives = 3}
+  end
+
+  def self.get_game_modes
+    ["easy","hard","super"]
+  end
+
+  def generate_rand_math_question()
+    num1 = rand(1..20)
+    if game_mode == "easy"
+      operator = "+"
+    elsif game_mode == "hard"
+      operator = ["+","-","*"].sample
+    elsif game_mode == "super"
+      operator = ["+","-","/","*"].sample
+    end
+    operator == "/" ? num2 = num1 * rand(1..10) : num2 = rand(1..20)
+    "#{num2}#{operator}#{num1}"
+  end
+
+  def play_round(player)
+    question = generate_rand_math_question
+    answer = eval(question)
+    player_answer = Helpers::prompt("#{player.name}: What is #{question}?",
+    Helpers::OUTPUT_COLORS[active_player_index]).to_i
+
+    player_answer == answer #returns true if correct, false if wrong
+  end
+
+  def update_stats(player, round_result)
+    if round_result
+      player.score += 1
+    else
+      player.lives -= 1
+    end
+  end
+
+  def losing_player()
+    losing_player = @players.find do |player|
+      !player.alive?
+    end
+  end
+
+  def set_active_player(new_active_index)
+    @players.each do |player|
+      player.is_active = false
+    end
+    @players[new_active_index].is_active = true
+  end
+
+  def generate_named_players(player_arr, num_players)
+    num_players.times do |num|
+      player_arr << Player.new(get_player_name(num))
+    end
+  end
+
+  def get_player_name(num)
+    Helpers::prompt("Player #{num + 1}, what's your name?")
+  end
+
+  def display_scores(red_player = nil)
+    @players.each do |player|
+      color = WIN_COLOR
+      color = LOSE_COLOR if player == red_player
+      puts "#{player.name} finished with #{player.score.to_s} ".colorize(color) +
+      "point#{"s" if player.score != 1} and #{player.lives}".colorize(color) +
+      " #{player.lives == 1 ? "life" : "lives"}.".colorize(color)
+    end
+  end
+
+  def active_player_index()
+    @players.find_index{|i| i.is_active}
+  end
+
+  def get_next_player()
+    if active_player_index < @players.length - 1
+      set_active_player(active_player_index + 1)
+    else
+      set_active_player(0)
+    end
+  end
+
+end
