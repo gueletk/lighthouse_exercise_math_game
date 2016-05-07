@@ -9,7 +9,6 @@ include Helpers
 
 def start_playing
   game_mode = Helpers::prompt("Thanks for choosing to play this guessing game! " +
-    "You and a partner can take turns to answer the math questions" +
     "Would you like to play in easy mode (adding), hard mode (adding, " +
     "subtraction, multiplication), or super hard mode (all operations)? " +
     "(easy/hard/super)").downcase
